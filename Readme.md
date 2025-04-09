@@ -1,6 +1,8 @@
 # URL Shortener Pro
 
-A modern, user-friendly URL shortener application built with Python Flask and Firebase. (Try here){https://url-shortner-rina.onrender.com}
+A modern, user-friendly URL shortener application built with Python Flask and Firebase. 
+
+[**Try it Live →**](https://url-shortner-rina.onrender.com)
 
 ## Features
 

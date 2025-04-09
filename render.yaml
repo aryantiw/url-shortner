@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: url-shortener
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn url.url:app
+    envVars:
+      - key: FIREBASE_DATABASE_URL
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.9.0 

@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Initialize Firebase
-cred = credentials.Certificate("./url-shortener-65429-firebase-adminsdk-fbsvc-94d8d312c4.json")
+cred = credentials.Certificate("url-shortener-65429-firebase-adminsdk-fbsvc-94d8d312c4.json")
 firebase_app = initialize_app(cred, {
     'databaseURL': os.getenv("FIREBASE_DATABASE_URL")
 })

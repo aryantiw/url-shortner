@@ -1,3 +1,253 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card {
+            backdrop-filter: blur(10px);
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .hover-scale {
+            transition: transform 0.3s ease;
+        }
+        .hover-scale:hover {
+            transform: scale(1.05);
+        }
+        .loading {
+            position: relative;
+        }
+        .loading:after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            margin: auto;
+            border: 3px solid transparent;
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: loading-spinner 1s ease infinite;
+        }
+        @keyframes loading-spinner {
+            from {
+                transform: rotate(0turn);
+            }
+            to {
+                transform: rotate(1turn);
+            }
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-white">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-2xl mx-auto">
+            <h1 class="text-4xl font-bold text-center mb-8">
+                <i class="fas fa-link mr-2"></i>URL Shortener Pro
+            </h1>
+            
+            <div class="card rounded-lg p-6 shadow-xl mb-8">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Enter URL to Shorten</label>
+                    <div class="flex">
+                        <input type="text" id="longUrl" 
+                               class="flex-1 p-3 rounded-l-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                               placeholder="https://example.com/very/long/url">
+                        <button id="shortenBtn" onclick="shortenUrl()" 
+                                class="bg-purple-600 hover:bg-purple-700 px-6 rounded-r-lg hover-scale">
+                            <i class="fas fa-compress-alt"></i> Shorten
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="result" class="mt-4"></div>
+            </div>
+
+            <div class="card rounded-lg p-6 shadow-xl">
+                <h2 class="text-xl font-semibold mb-4">Your Recent URLs</h2>
+                <div id="recentUrls" class="space-y-3">
+                    <div class="text-center py-4">
+                        <div class="loading mx-auto"></div>
+                        <p class="mt-2 text-gray-300">Loading your recent URLs...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-analytics.js";
+        import { getDatabase, ref, onValue, push, set } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAbmf4j1lMgs3xAf05eWp1Lt_5DIkQXgSg",
+            authDomain: "url-shortener-65429.firebaseapp.com",
+            projectId: "url-shortener-65429",
+            storageBucket: "url-shortener-65429.firebasestorage.app",
+            messagingSenderId: "681973561899",
+            appId: "1:681973561899:web:aee9595d29e1f8316b086e",
+            measurementId: "G-QX75MTLX0E",
+            databaseURL: "https://url-shortener-65429-default-rtdb.firebaseio.com"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const database = getDatabase(app);
+
+        // Get the base URL for API calls
+        const baseUrl = window.location.origin;
+
+        // Generate or retrieve user ID
+        function getUserId() {
+            let userId = localStorage.getItem('url_shortener_user_id');
+            if (!userId) {
+                // Generate a random user ID if not exists
+                userId = 'user_' + Math.random().toString(36).substring(2, 15);
+                localStorage.setItem('url_shortener_user_id', userId);
+            }
+            return userId;
+        }
+
+        // Function to load recent URLs from the API
+        async function loadRecentUrls() {
+            try {
+                const userId = getUserId();
+                const response = await fetch(`${baseUrl}/recent/${userId}`);
+                const data = await response.json();
+                
+                const recentUrlsDiv = document.getElementById('recentUrls');
+                recentUrlsDiv.innerHTML = '';
+                
+                if (data.recent_urls && data.recent_urls.length > 0) {
+                    data.recent_urls.forEach(url => {
+                        const urlCard = document.createElement('div');
+                        urlCard.className = 'bg-white bg-opacity-10 p-3 rounded-lg hover-scale';
+                        urlCard.innerHTML = `
+                            <div class="flex justify-between items-center">
+                                <div class="truncate">
+                                    <div class="text-sm text-gray-300">${url.long_url}</div>
+                                    <a href="${url.short_url}" target="_blank" class="text-purple-300 hover:text-purple-200">
+                                        ${url.short_url}
+                                    </a>
+                                </div>
+                                <button onclick="copyToClipboard('${url.short_url}')" 
+                                        class="text-gray-300 hover:text-white">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        `;
+                        recentUrlsDiv.appendChild(urlCard);
+                    });
+                } else {
+                    recentUrlsDiv.innerHTML = `
+                        <div class="text-center py-4 text-gray-300">
+                            <i class="fas fa-history text-3xl mb-2"></i>
+                            <p>You haven't shortened any URLs yet</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error("Error loading recent URLs:", error);
+                document.getElementById('recentUrls').innerHTML = `
+                    <div class="text-center py-4 text-red-300">
+                        <i class="fas fa-exclamation-circle text-3xl mb-2"></i>
+                        <p>Error loading your recent URLs</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Load recent URLs when page loads
+        loadRecentUrls();
+
+        // Make functions available globally
+        window.copyToClipboard = function(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('URL copied to clipboard!');
+            });
+        };
+
+        window.shortenUrl = async function() {
+            const longUrl = document.getElementById("longUrl").value;
+            if (!longUrl) {
+                alert('Please enter a URL');
+                return;
+            }
+
+            // Show loading state
+            const shortenBtn = document.getElementById("shortenBtn");
+            const originalBtnText = shortenBtn.innerHTML;
+            shortenBtn.innerHTML = '<div class="loading"></div>';
+            shortenBtn.disabled = true;
+
+            try {
+                const userId = getUserId();
+                const response = await fetch(`${baseUrl}/shorten`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        long_url: longUrl,
+                        user_id: userId
+                    })
+                });
+                const data = await response.json();
+                
+                if (data.short_url) {
+                    document.getElementById("result").innerHTML = `
+                        <div class="bg-green-500 bg-opacity-20 p-4 rounded-lg">
+                            <div class="text-sm mb-2">Shortened URL:</div>
+                            <div class="flex items-center justify-between">
+                                <a href="${data.short_url}" target="_blank" 
+                                   class="text-purple-300 hover:text-purple-200 break-all">
+                                    ${data.short_url}
+                                </a>
+                                <button onclick="copyToClipboard('${data.short_url}')" 
+                                        class="ml-2 text-gray-300 hover:text-white">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Reload recent URLs
+                    loadRecentUrls();
+                } else {
+                    document.getElementById("result").innerHTML = `
+                        <div class="bg-red-500 bg-opacity-20 p-4 rounded-lg">
+                            Error: ${data.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById("result").innerHTML = `
+                    <div class="bg-red-500 bg-opacity-20 p-4 rounded-lg">
+                        Error: ${error.message}
+                    </div>
+                `;
+            } finally {
+                // Restore button state
+                shortenBtn.innerHTML = originalBtnText;
+                shortenBtn.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html> -->
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>

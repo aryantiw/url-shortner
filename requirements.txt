@@ -3,3 +3,5 @@ flask-cors
 firebase-admin
 python-dotenv
 gunicorn
+qrcode
+Pillow
